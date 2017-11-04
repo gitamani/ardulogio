@@ -1,2 +1,2 @@
-# pesaasrduino
-Pesa e non solo con Arduino
+# Ardulogio
+Orologio - meteo - energy monitor con Arduino Mega e WeMos
