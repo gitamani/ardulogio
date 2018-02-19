@@ -7,8 +7,8 @@
 
 unsigned long ttime;
 boolean s_time = true;
-const char* ssid = "TP-LINK_GT";
-const char* password = "toninat20261956";
+const char* ssid = "retewifi";
+const char* password = "password";
  
 int ledPin = 5;
 WiFiServer server(80);
