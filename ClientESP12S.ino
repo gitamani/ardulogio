@@ -6,8 +6,8 @@
 #include <ESP8266HTTPClient.h>
 
 // Inizializza la connessione Wifi al tuo router
-const char* ssid = "TP-LINK_GT"; // Nome della tua rete Wifi
-const char* password = "toninat20261956"; // Password della tua rete Wifi
+const char* ssid = "retewifi"; // Nome della tua rete Wifi
+const char* password = "password"; // Password della tua rete Wifi
 
 IPAddress ip(192, 168, 1, 79); // indirizzo IP assegnato all'ESP
 IPAddress gateway(192, 168, 1, 1); // gateway del tuo router
