@@ -1,72 +1,55 @@
 //Creato da Giuseppe Tamanini
-20-02-2018
+23-02-2018
 //con licenza CC BY-SA
 
+#include <SPI.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 
-// Inizializza la connessione Wifi al tuo router
-const char* ssid = "retewifi"; // Nome della tua rete Wifi
-const char* password = "password"; // Password della tua rete Wifi
-
-IPAddress ip(192, 168, 1, 79); // indirizzo IP assegnato all'ESP
-IPAddress gateway(192, 168, 1, 1); // gateway del tuo router
-#define USE_SERIAL Serial
+char ssid[] = "nomeretewifi";           // SSID wifi del tuo router
+char pass[] = "passwordretewifi";      // password del wifi del tuo router
 
 int LightOn = 5; // pin a cui è collegato il pin di uscita dell'UA741 che è alto (5V) quando la fotoresistenza è illuminata
 int Led = 12; // pin del led che si accende quando il pin 12 è alto
 boolean LightState; // stato del pin 5
 int cont = 0; // contataore dei lampeggi
 int oldcont = 0; // vecchio valore di cont
-char Stringacont[3];
+char Stringacont[3]; // serve per formattare il valore da inviare al server 
+unsigned long ttime; // memorizza il tempo che passa
+boolean stato = true; // serve per far ripartire il conteggio
+float ftime;
 
-unsigned long ttime;
-
-boolean stato = true;
+IPAddress server(192,168,1,80);       // indirizzo Ip del Server
+WiFiClient client;
 
 void setup() {
-  Serial.begin(9600);
-  delay(10);
- 
-  pinMode(LightOn, INPUT); // imposta il pin 5 in Ingresso
-  pinMode(Led, OUTPUT); // imposta il pin 12 in Uscita
- 
-  Serial.print(F("Setting static ip to : "));
-  Serial.println(ip);
- 
-  // Connette alla tua rete WiFi
-  Serial.println();
-  Serial.println();
-  Serial.print("Connessione a ");
-  Serial.println(ssid);
-  IPAddress subnet(255, 255, 255, 0); // imposta la subnet mask della tua rete
-  WiFi.config(ip, gateway, subnet); 
-  WiFi.begin(ssid, password);
- 
+  Serial.begin(115200);               // Solo per il debug
+
+  pinMode(LightOn, INPUT); // imposta il pin in Ingresso
+  pinMode(Led, OUTPUT); // imposta il pin in Uscita
+
+  WiFi.begin(ssid, pass);             // Si connette con il router in wifi
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
     Serial.print(".");
+    delay(500);
   }
-  Serial.println("");
-  Serial.println("WiFi connessa");
- 
-  // Start the server
- 
-  // Stampa l'indirizzo IPs
-  Serial.print("Stai usando questo URL : ");
-  Serial.print("http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("/");
+  /*Serial.println("Connected to wifi");
+  Serial.print("Status: "); Serial.println(WiFi.status());    // Visualizza i parametri della rete
+  Serial.print("IP: ");     Serial.println(WiFi.localIP());
+  Serial.print("Subnet: "); Serial.println(WiFi.subnetMask());
+  Serial.print("Gateway: "); Serial.println(WiFi.gatewayIP());
+  Serial.print("SSID: "); Serial.println(WiFi.SSID());
+  Serial.print("Signal: "); Serial.println(WiFi.RSSI());*/
+  
+  pinMode(Led, OUTPUT);
 }
 
-
-
-void loop() {
-  if (stato == true) {
+void loop () {
+  
+  if (stato == true) {  // se stato è vera fa ripartire il tempo
     ttime=millis();
     stato = false;
   }
-
+  
   // legge lo stato del pin 5 e lo memorizza in LighState
   LightState = digitalRead(LightOn);
   if (LightState) { // se è Alto
@@ -82,28 +65,19 @@ void loop() {
     digitalWrite(Led, LOW); // spegne il led
     oldcont = cont; // memorizza cont in oldcont
   }
-  delay(50); // aspetta 50 ms
-  if (millis() - ttime > 120000) {
-    char Stringacont[3];
-    sprintf(Stringacont, "%03d", cont); 
-    Serial.println(Stringacont);
-    HTTPClient http;
-    USE_SERIAL.print("[HTTP] begin...\n");
-    // configure traged server and url
-    http.begin("192.168.1.69", 80, Stringacont); //HTTP
-    USE_SERIAL.print("[HTTP] GET...\n");
-    // start connection and send HTTP header
-    int httpCode = http.GET();
-    USE_SERIAL.print("httpCode");
-    USE_SERIAL.print(httpCode);
-    cont = 0;
-    stato = true;
+  
+  if (millis()-ttime > 60000) { // se sono passati 60 secondi
+    client.connect(server, 80);   // si connette al Server
+    Serial.println("."); // invia un carattere . sulla seriale
+    sprintf(Stringacont, "C%02d", cont); // formatta il valore su due cifre aggiungendo una C davanti (Es. C09)
+    client.print(Stringacont);
+    client.println("\r");  // Invia il valore al Server
+    // Serial.println(Stringacont);
+    String answer = client.readStringUntil('\r');   // riceve il valore di ritorno dal Server
+    Serial.println("Dal Server: " + answer); // lo manda sulla seriale
+    client.flush(); // attende finché non sono stati inviati tutti i caratteri in uscita
+    delay(250); // attendi 250 millisecondi
+    cont = 0; // azzera cont fa ripartire il conteggio
+    stato = true; // pone vera stato per azzerrare il tempo
   }
-
-
 }
-
-void inviacont() {
-
-}
-
