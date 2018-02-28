@@ -1,34 +1,54 @@
 /*
- 
+
 This code has released under license CC BY- SA
-last release created 31 Mar 2016
+last release created 17/01/2018
 by Giuseppe Tamanini
 
+MEGA                           LCD
+22.............................LCD_D0
+23.............................LCD_D1
+24.............................LCD_D2
+25.............................LCD_D3
+26.............................LCD_D4
+27.............................LCD_D5
+28.............................LCD_D6
+29.............................LCD_D7
+A0.............................LCD_RD
+A1.............................LCD_WR
+A2.............................LCD_RS
+A3.............................LCD_CS
+A4.............................LCD_RST
+50.............................SD_D0
+51.............................SD_D1
+52.............................SD_SCK
+53.............................SD_SS
+
+30.............................WS2812 DIN 
 */
 
-// *** SPFD5408 change -- Begin
 #include <Arduino.h>
-#include <SPFD5408_Adafruit_GFX.h>    // Core graphics library
-#include <SPFD5408_Adafruit_TFTLCD.h> // Hardware-specific library
-#include <SPFD5408_TouchScreen.h>
+#include <Adafruit_GFX.h>    // Core graphics library
+#include <Adafruit_TFTLCD.h> // Hardware-specific library
+#include <TouchScreen.h>
 #include <SD.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <RTClib.h>
-#include <dht11.h>
-RTC_DS1307 RTC;
+#include <Adafruit_SHT31.h>
 #include <WS2812.h>
-// *** SPFD5408 change -- End
+RTC_DS1307 RTC;
+Adafruit_SHT31 sht31 = Adafruit_SHT31();
 
+// *** SPFD5408 change -- End
 #if defined(__SAM3X8E__)
 #undef __FlashStringHelper::F(string_literal)
 #define F(string_literal) string_literal
 #endif
 
-#define YP A1  // must be an analog pin, use "An" notation!
+#define YP A3  // must be an analog pin, use "An" notation!
 #define XM A2  // must be an analog pin, use "An" notation!
-#define YM 7   // can be a digital pin
-#define XP 6   // can be a digital pin
+#define YM 23   // can be a digital pin
+#define XP 22    // can be a digital pin
 
 // Original values
 //#define TS_MINX 150
@@ -37,10 +57,10 @@ RTC_DS1307 RTC;
 //#define TS_MAXY 940
 
 // Calibrate values
-#define TS_MINX 125
-#define TS_MINY 85
-#define TS_MAXX 965
-#define TS_MAXY 905
+#define TS_MINX 180
+#define TS_MINY 120
+#define TS_MAXX 860
+#define TS_MAXY 940
 
 // For better pressure precision, we need to know the resistance
 // between X+ and X- Use any multimeter to read it
@@ -66,12 +86,10 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
 #define SD_CS 53     // Set the chip select line to whatever you use (10 doesnt conflict with the library)
 
-Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, A4);
+Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
 #define BOXSIZE 60
 #define PENRADIUS 3
-dht11 DHT;
-#define DHT11_PIN 22
 int holdsel;
 int currentsel;
 char buffer[20];
@@ -87,7 +105,7 @@ int gm[]={31,28,31,30,31,30,31,31,30,31,30,31};
 int capomese[]={11,12,1,2,3,4,5,6,7,8,9,10};
 int patta[]={24,5,16,27,8,19,0,11,22,3,14,25,6,17,28,9,20,1,12,23,4,15,26,7,18,29,10,21,2,13,24,5,16,27,8,19,0,11,22,3,14};
 int faselunare;
-#define outputPin 23  // Digital output pin command WS2812
+#define outputPin 30  // Digital output pin command WS2812
 #define LEDCount 60   // Number of LEDs WS2812
 WS2812 LED(LEDCount);
 cRGB value;
@@ -161,14 +179,43 @@ void setup() {
   Serial1.begin(9600);
   Wire.begin();
   RTC.begin();
+  Serial.println("SHT31 test");
+  if (! sht31.begin(0x44)) {   // Set to 0x45 for alternate i2c addr
+    Serial.println("Couldn't find SHT31");
+    while (1) delay(1);
+  }
   LED.setOutput(outputPin); // Digital Pin 23
   inputString.reserve(200);
   // following line sets the RTC to the date & time this sketch was compiled
   //RTC.adjust(DateTime(2016,2,7,4,59,0));
-    
+
   tft.reset();
 
-  tft.begin(0x9341); // SDFP5408
+  uint16_t identifier = tft.readID();
+
+  if(identifier == 0x9325) {
+    Serial.println(F("Found ILI9325 LCD driver"));
+  } else if(identifier == 0x9328) {
+    Serial.println(F("Found ILI9328 LCD driver"));
+  } else if(identifier == 0x7575) {
+    Serial.println(F("Found HX8347G LCD driver"));
+  } else if(identifier == 0x9341) {
+    Serial.println(F("Found ILI9341 LCD driver"));
+  } else if(identifier == 0x8357) {
+    Serial.println(F("Found HX8357D LCD driver"));
+  } else {
+    Serial.print(F("Unknown LCD driver chip: "));
+    Serial.println(identifier, HEX);
+    Serial.println(F("If using the Adafruit 2.8\" TFT Arduino shield, the line:"));
+    Serial.println(F("  #define USE_ADAFRUIT_SHIELD_PINOUT"));
+    Serial.println(F("should appear in the library header (Adafruit_TFT.h)."));
+    Serial.println(F("If using the breakout board, it should NOT be #defined!"));
+    Serial.println(F("Also if using the breakout, double-check that all wiring"));
+    Serial.println(F("matches the tutorial."));
+    return;
+  }
+  
+  tft.begin(identifier); // SDFP5408
 
   tft.setRotation(1); // Need for the Mega, please changed for your choice or rotation initial
 
@@ -205,14 +252,18 @@ void loop()
   // pressure of 0 means no pressing!
 
   if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
-    
-    p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
-    // *** SPFD5408 change -- End
-    p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
-    Serial.println(p.x);
+    Serial.print(p.x);
+    Serial.print(" ");
     Serial.println(p.y);
-    if (p.x < BOXSIZE) {
-       if (p.y< BOXSIZE) { 
+    
+    p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.height());
+    // *** SPFD5408 change -- End
+    p.y = map(p.y, TS_MINY, TS_MAXY, tft.width(), 0);
+    Serial.print(p.x);
+    Serial.print(" ");
+    Serial.println(p.y);
+    if (p.y < BOXSIZE) {
+       if (p.x< BOXSIZE) { 
          bmpDraw("ICO01.BMP", 0, 0);
          switch (holdsel) {
            case 2:
@@ -237,7 +288,7 @@ void loop()
          Intro();
          ngraph=0;
          spdt=0;
-       } else if (p.y < BOXSIZE*2) {
+       } else if (p.x < BOXSIZE*2) {
          bmpDraw("ICO02.BMP", 0, 60);
          switch (holdsel) {
            case 1:
@@ -261,7 +312,7 @@ void loop()
          ngraph=ngraph+1;
          if (ngraph>3) ngraph=3;
          currentsel=2;
-       } else if (p.y < BOXSIZE*3) {
+       } else if (p.x < BOXSIZE*3) {
          bmpDraw("ICO03.BMP", 0, 120);
          switch (holdsel) {
            case 1:
@@ -275,7 +326,7 @@ void loop()
              break;
          }
          currentsel=3;
-       } else if (p.y < BOXSIZE*4 && holdsel==1) {
+       } else if (p.x < BOXSIZE*4 && holdsel==1) {
          bmpDraw("ICO04.BMP", 0, 180);
          switch (holdsel) {
            case 1:
@@ -295,23 +346,22 @@ void loop()
     }
     //Serial.println(currentsel);
     if (currentsel==4) {
-    if (p.y > 120 && p.y < 180) {
-      if (p.x > 70 && p.x < 130) {
+    if (p.x > 120 && p.x < 180) {
+      if (p.y > 70 && p.y < 130) {
         SalvaData();
       }
-      else if (p.x > 130 && p.x < 190) {
+      else if (p.y > 130 && p.y < 190) {
         DiminuisciData();
       }
-      else if (p.x > 190 && p.x < 250) {
+      else if (p.y > 190 && p.y < 250) {
         AumentaData();
       }
-      else if (p.x > 250 && p.x < 310) {
+      else if (p.y > 250 && p.y < 310) {
         if (spdt<5) spdt=spdt+1;
         ModificaData();
       }
     }
     }
-
     delay(250);
   }
     DateTime now = RTC.now();
@@ -326,12 +376,12 @@ void loop()
       hho=hho*5+mm/12;
       holdsecond=ss;
       AccendiLed();
-      if (currentsel==1) ScriviDati();
     }
+    if (ss==30) ScriviDati();
     if (currentsel==1 && holdminute!=mm) {
       
       nmp=nmp+1;
-      sgs=now.dayOfTheWeek();
+      sgs=now.dayOfWeek();
       dddd=now.day();
       mmmm=now.month();
       yyyy=now.year();
@@ -385,7 +435,7 @@ void loop()
     }
 }
 
-void Intro () {
+void Intro() {
     tft.fillRect(60,0,260,240,BLACK);
     tft.setTextSize(2);
     tft.setTextColor(WHITE);
@@ -407,10 +457,9 @@ void Intro () {
     tft.setTextColor(YELLOW);
     tft.fillRect(60,100,200,20,BLACK);
     tft.print(Puo[nPuo]);
-
 }
 
-void GraficoCorrenteGiorno () {
+void GraficoCorrenteGiorno() {
   dddp=dddd-1;
   mmmp=mmmm;
   yyyp=yyyy;
@@ -511,7 +560,7 @@ void GraficoCorrenteGiorno () {
   }
 }
 
-void GraficoCorrenteSettimana () {
+void GraficoCorrenteSettimana() {
 
   tft.fillRect(60,0,260,240,BLACK);
   tft.setTextSize(2);
@@ -620,7 +669,7 @@ void GraficoCorrenteSettimana () {
 
 }
 
-void GraficoCorrenteMese () {
+void GraficoCorrenteMese() {
 
   tft.fillRect(60,0,260,240,BLACK);
   tft.setTextSize(2);
@@ -731,7 +780,7 @@ void GraficoCorrenteMese () {
 
 }
 
-void SalvaData () {
+void SalvaData() {
   RTC.adjust(DateTime(yyyy,mmmm,dddd,hhhh,nnnn,ssss));
   holdsel=1;
   currentsel=1;
@@ -745,7 +794,7 @@ void SalvaData () {
   Intro();
 }
 
-void ModModifica () {
+void ModModifica() {
   tft.fillRect(60,0,260,240,BLACK);
   bmpDraw("ICOS.BMP", 70, 120);
   bmpDraw("ICOM.BMP", 130, 120);
@@ -761,7 +810,7 @@ void ModModifica () {
   ModificaData();
 }
 
-void AccendiLed () {
+void AccendiLed() {
   for (int i=0; i < 60; i++) {
     r[i]=0;
     g[i]=15;
@@ -803,13 +852,8 @@ void AccendiLed () {
   }
 }
 
-void ScriviOra () {
-  
+void ScriviOra() {
       DataOra="";
-      tft.fillRect(60,0,260,20,BLACK);
-      tft.setTextColor(WHITE);
-      tft.setTextSize(2);
-      tft.setCursor(60,0);
       DataOra=StringS[sgs];
       DataOra=DataOra+" ";
       sprintf(buffer,  "%02d", dddd);
@@ -822,37 +866,39 @@ void ScriviOra () {
       DataOra=DataOra+" ";
       sprintf(buffer,  "%02d:%02d", hh, mm);
       DataOra=DataOra+buffer;
+      tft.fillRect(60,0,260,20,BLACK);
+      tft.setTextColor(WHITE);
+      tft.setTextSize(2);
+      tft.setCursor(60,0);
       tft.print(DataOra);
-      //Serial.print(DataOra);
-
+      Serial.println(DataOra);
 }
       
-void ScriviDati () {
-
-    int chk;
-    chk = DHT.read(DHT11_PIN);
-    if (chk==DHTLIB_OK) {
-      umid=DHT.humidity;
-      if (holdumid!=umid) {
-        tft.fillRect(230,20,32,20,BLACK);
-        tft.setTextColor(WHITE);
-        tft.setTextSize(2);
-        tft.setCursor(230,20);
-        tft.print(umid);
-        holdumid=umid;
-      }
-      temp=DHT.temperature;
-      if (holdtemp!=temp) {
-        tft.fillRect(230,40,32,20,BLACK);
-        tft.setTextSize(2);
-        tft.setCursor(230,40);
-        tft.print(temp);
-        holdtemp=temp;
-      }
+void ScriviDati() {
+  temp = sht31.readTemperature();
+  umid = sht31.readHumidity();
+  if (! isnan(temp)) {
+    if (holdumid!=umid) {
+      tft.fillRect(230,20,32,20,BLACK);
+      tft.setTextColor(WHITE);
+      tft.setTextSize(2);
+      tft.setCursor(230,20);
+      tft.print(umid);
+      holdumid=umid;
     }
+  }
+  if (! isnan(umid)) {
+    if (holdtemp!=temp) {
+      tft.fillRect(230,40,32,20,BLACK);
+      tft.setTextSize(2);
+      tft.setCursor(230,40);
+      tft.print(temp);
+      holdtemp=temp;
+    }
+  }
 }
 
-void ScriviDatiRicevuti () {
+void ScriviDatiRicevuti() {
   
    if (stringComplete) {
       if (currentsel==1) {
@@ -931,7 +977,7 @@ void ScriviDatiRicevuti () {
    }
 }
 
-void ModificaData () {
+void ModificaData() {
   tft.fillRect(70,100,240,24,BLACK);
   tft.setTextSize(3);
   switch (spdt) {
@@ -973,7 +1019,7 @@ void ModificaData () {
   }    
 }
 
-void AumentaData () {
+void AumentaData() {
   tft.fillRect(220,100,80,24,BLACK);
   tft.setTextSize(3);
   tft.setCursor(220,100);
@@ -1009,7 +1055,7 @@ void AumentaData () {
    }
 }
 
-void DiminuisciData () {
+void DiminuisciData() {
   tft.fillRect(220,100,80,24,BLACK);
   tft.setTextSize(3);
   tft.setCursor(220,100);
@@ -1055,7 +1101,7 @@ void serialEvent1() {
   }
 }
 
-void drawBorder () {
+void drawBorde() {
 
   // Draw a border
 
@@ -1067,6 +1113,7 @@ void drawBorder () {
   tft.fillRect(border, border, (width - border * 2), (height - border * 2), WHITE);
   
 }
+
 #define BUFFPIXEL 20
 
 void bmpDraw(char *filename, int x, int y) {
