@@ -8,7 +8,7 @@
 char ssid[] = "nomeretewifi";           // SSID wifi del tuo router
 char pass[] = "passwordretewifi";      // password del wifi del tuo router
 
-int LightOn = 5; // pin a cui è collegato il pin di uscita dell'UA741 che è alto (5V) quando la fotoresistenza è illuminata
+int LightOn = 2; // pin a cui è collegato il pin di uscita dell'UA741 che è alto (5V) quando la fotoresistenza è illuminata
 int Led = 12; // pin del led che si accende quando il pin 12 è alto
 boolean LightState; // stato del pin 5
 int cont = 0; // contataore dei lampeggi
