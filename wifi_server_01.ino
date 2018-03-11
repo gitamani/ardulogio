@@ -2,8 +2,8 @@
 #include <ESP8266WiFi.h>
 
 byte ledPin = 5;
-char ssid[] = "TP-LINK_GT";               // SSID della wifi del tuo router
-char pass[] = "toninat20261956";          // password del wifi del tuo router
+char ssid[] = "NomeWiFi";               // SSID della wifi del tuo router
+char pass[] = "PasswordWiFi";          // password del wifi del tuo router
 WiFiServer server(80);                    
 
 IPAddress ip(192, 168, 1, 80);            // Indirizzo IP da assegnareal Server
