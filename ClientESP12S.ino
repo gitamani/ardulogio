@@ -1,31 +1,39 @@
-//Creato da Giuseppe Tamanini
-23-02-2018
+//Creato da Giuseppe Tamanini 11-03-2018
 //con licenza CC BY-SA
+
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
 
 #include <SPI.h>
 #include <ESP8266WiFi.h>
 
-char ssid[] = "nomeretewifi";           // SSID wifi del tuo router
-char pass[] = "passwordretewifi";      // password del wifi del tuo router
+char ssid[] = "NomeWiFi";           // SSID wifi del tuo router
+char pass[] = "PasswordWiFi";      // password del wifi del tuo router
 
-int LightOn = 2; // pin a cui è collegato il pin di uscita dell'UA741 che è alto (5V) quando la fotoresistenza è illuminata
+int LightOn = 16; // pin a cui è collegato il pin di uscita dell'UA741 che è alto (5V) quando la fotoresistenza è illuminata
 int Led = 12; // pin del led che si accende quando il pin 12 è alto
 boolean LightState; // stato del pin 5
 int cont = 0; // contataore dei lampeggi
 int oldcont = 0; // vecchio valore di cont
-char Stringacont[3]; // serve per formattare il valore da inviare al server 
-unsigned long ttime; // memorizza il tempo che passa
-boolean stato = true; // serve per far ripartire il conteggio
-float ftime;
+char Stringacont[3]; // stringa inviata al server del conteggio
+unsigned long ttime; // tempo do controllo
+boolean stato = true; // fa ripartire il tempo
 
-IPAddress server(192,168,1,80);       // indirizzo Ip del Server
+Adafruit_BMP085 bmp; // sensore pressione atmosferica
+int altitude = 725; // altitudine
+int temp; // temperatura esterna
+int pressa; // pressione atmosferica
+char Stringatemp[4]; // stringa inviata al server della temperatura
+char Stringapressa[5]; // stringa inviata al server della temperatura
+
+IPAddress server(192,168,1,80);  // indirizzo Ip del Server
 WiFiClient client;
 
 void setup() {
   Serial.begin(115200);               // Solo per il debug
 
-  pinMode(LightOn, INPUT); // imposta il pin in Ingresso
-  pinMode(Led, OUTPUT); // imposta il pin in Uscita
+  pinMode(LightOn, INPUT); // imposta il pin 5 in Ingresso
+  pinMode(Led, OUTPUT); // imposta il pin 12 in Uscita
 
   WiFi.begin(ssid, pass);             // Si connette con il router in wifi
   while (WiFi.status() != WL_CONNECTED) {
@@ -41,11 +49,16 @@ void setup() {
   Serial.print("Signal: "); Serial.println(WiFi.RSSI());*/
   
   pinMode(Led, OUTPUT);
+
+  if (!bmp.begin()) { // controlla il collegamento del sensore
+    Serial.println("Could not find a valid BMP085 sensor, check wiring!");
+    while (1) {}
+    }
 }
 
 void loop () {
   
-  if (stato == true) {  // se stato è vera fa ripartire il tempo
+  if (stato == true) { // se stato è true fa ripartire il tempo
     ttime=millis();
     stato = false;
   }
@@ -66,18 +79,28 @@ void loop () {
     oldcont = cont; // memorizza cont in oldcont
   }
   
-  if (millis()-ttime > 60000) { // se sono passati 60 secondi
-    client.connect(server, 80);   // si connette al Server
-    Serial.println("."); // invia un carattere . sulla seriale
-    sprintf(Stringacont, "C%02d", cont); // formatta il valore su due cifre aggiungendo una C davanti (Es. C09)
+  if (millis()-ttime > 60000) {
+    client.connect(server, 80);   // Si connette al Server
+    Serial.println(".");
+    sprintf(Stringacont, "A%02d", cont); // formatta il valore con su due cifre antecedendoci una A (Es. A12)
     client.print(Stringacont);
-    client.println("\r");  // Invia il valore al Server
-    // Serial.println(Stringacont);
-    String answer = client.readStringUntil('\r');   // riceve il valore di ritorno dal Server
-    Serial.println("Dal Server: " + answer); // lo manda sulla seriale
-    client.flush(); // attende finché non sono stati inviati tutti i caratteri in uscita
+    //client.println("\r");  // Invia il messaggio al Server
+    Serial.println(Stringacont);
+    temp = bmp.readTemperature(); 
+    sprintf(Stringatemp, "T %02d", temp); // formatta il valore con su due cifre antecedendoci una T e un segno negativo o uno spazio (Es. T-04)
+    client.print(Stringatemp);
+    //client.println("\r");  // Invia il messaggio al Server
+    Serial.println(Stringatemp);
+    pressa=  bmp.readPressure() / 100 + altitude / 8;
+    sprintf(Stringapressa, "P%04d", pressa); // formatta il valore con su quattro cifre antecedendoci una P (Es. P1014)
+    client.print(Stringapressa);
+    client.println("\r");  // Invia il messaggio al Server
+    Serial.println(Stringapressa);
+    String answer = client.readStringUntil('\r');   // Riceve il messaggio dal Server
+    Serial.println("Dal Server: " + answer);
+    client.flush();
     delay(250); // attendi 250 millisecondi
-    cont = 0; // azzera cont fa ripartire il conteggio
-    stato = true; // pone vera stato per azzerrare il tempo
+    cont = 0;
+    stato = true;
   }
 }
