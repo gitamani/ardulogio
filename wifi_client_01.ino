@@ -3,8 +3,8 @@
 #include <ESP8266WiFi.h>
 
 byte ledPin = 4; // pin a cui è collegato il led
-char ssid[] = "TP-LINK_GT";           // SSID wifi del tuo router
-char pass[] = "toninat20261956";      // password del wifi del tuo router
+char ssid[] = "NomeWiFi";           // SSID wifi del tuo router
+char pass[] = "PasswordWiFi";      // password del wifi del tuo router
 
 unsigned long askTimer = 0;
 
