@@ -1,4 +1,4 @@
-//Creato da Giuseppe Tamanini 11-03-2018
+//Creato da Giuseppe Tamanini 18-03-2018
 //con licenza CC BY-SA
 
 #include <Wire.h>
@@ -17,10 +17,8 @@ int cont = 0; // contataore dei lampeggi
 int oldcont = 0; // vecchio valore di cont
 char Stringacont[3]; // stringa inviata al server del conteggio
 unsigned long ttime; // tempo do controllo
-boolean stato = true; // fa ripartire il tempo
 
 Adafruit_BMP085 bmp; // sensore pressione atmosferica
-int altitude = 725; // altitudine
 int temp; // temperatura esterna
 int pressa; // pressione atmosferica
 char Stringatemp[4]; // stringa inviata al server della temperatura
@@ -53,23 +51,21 @@ void setup() {
   if (!bmp.begin()) { // controlla il collegamento del sensore
     Serial.println("Could not find a valid BMP085 sensor, check wiring!");
     while (1) {}
-    }
+  }
+  
+  ttime=millis(); // pone ttime uguale a millis()
+    
 }
 
 void loop () {
   
-  if (stato == true) { // se stato è true fa ripartire il tempo
-    ttime=millis();
-    stato = false;
-  }
-  
-  // legge lo stato del pin 5 e lo memorizza in LighState
+  // legge lo stato del pin 12 e lo memorizza in LighState
   LightState = digitalRead(LightOn);
-  if (LightState) { // se è Alto
+  if (LightState) { // se è Alto cioè il led del contatatore è acceso
     delay(50); // aspetta 50 ms
-    LightState = digitalRead(LightOn); // rilegge lo stato del pin 5
-    if (LightState==true & cont==oldcont) { // se il pin 5 è alto e precedentemente non lo era
-      cont = cont + 1; // incrementa cont
+    LightState = digitalRead(LightOn); // rilegge lo stato del pin 12
+    if (LightState==true & cont==oldcont) { // se il pin 12 è ancora alto
+      cont = cont + 1; // incrementa il conteggio cont
       Serial.println(cont); // visualizza il valore sulla seriale
       Serial.println(millis() - ttime);
       digitalWrite(Led, HIGH); // accende il led collegato al pin 12
@@ -79,28 +75,26 @@ void loop () {
     oldcont = cont; // memorizza cont in oldcont
   }
   
-  if (millis()-ttime > 60000) {
-    client.connect(server, 80);   // Si connette al Server
+  if (millis()-ttime > 60000) { // Se è passato un minuto
+    ttime=millis(); // pone ttime uguale a millis() facendo ripartire il conteggio del tempo 
+    client.connect(server, 80);   // si connette al Server
     Serial.println(".");
-    sprintf(Stringacont, "A%02d", cont); // formatta il valore con su due cifre antecedendoci una A (Es. A12)
+    sprintf(Stringacont, "A%02d", cont); // formatta il numero di conteggi con su due cifre antecedendoci una A (Es. A12)
     client.print(Stringacont);
-    //client.println("\r");  // Invia il messaggio al Server
-    Serial.println(Stringacont);
-    temp = bmp.readTemperature(); 
-    sprintf(Stringatemp, "T %02d", temp); // formatta il valore con su due cifre antecedendoci una T e un segno negativo o uno spazio (Es. T-04)
-    client.print(Stringatemp);
-    //client.println("\r");  // Invia il messaggio al Server
-    Serial.println(Stringatemp);
-    pressa=  bmp.readPressure() / 100 + altitude / 8;
+    // Serial.println(Stringacont);
+    temp = bmp.readTemperature();   // legge
+    sprintf(Stringatemp, "T %02d", temp); // formatta il valore con su due cifre antecedendoci una T e un segno negativo o uno spazio (Es. T 18, T-04 se negativa)
+    client.print(Stringatemp); // legge la temperatura dal modulo BMP e la memorizza in temp
+   // Serial.println(Stringatemp);
+    pressa =  bmp.readPressure(); // legge la pressione atmosferica el amemorizza in pressa
     sprintf(Stringapressa, "P%04d", pressa); // formatta il valore con su quattro cifre antecedendoci una P (Es. P1014)
     client.print(Stringapressa);
-    client.println("\r");  // Invia il messaggio al Server
+    client.println("\r");  // invia il messaggio al Server
     Serial.println(Stringapressa);
     String answer = client.readStringUntil('\r');   // Riceve il messaggio dal Server
-    Serial.println("Dal Server: " + answer);
+    // Serial.println("Dal Server: " + answer);
     client.flush();
-    delay(250); // attendi 250 millisecondi
-    cont = 0;
-    stato = true;
+    delay(100); // attendi 100 millisecondi
+    cont = 0; // azzera il conteggio dei lampeggi
   }
 }
