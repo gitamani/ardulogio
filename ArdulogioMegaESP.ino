@@ -906,7 +906,7 @@ void ScriviDatiRicevuti() {
       Serial.print("1: ");
       Serial.println(inputString. substring(0, 1));
       if (inputString.substring(0,1)=="A") {
-        inData1=inputString.substring(2,4);
+        inData1=inputString.substring(1,3);
         Pas=inData1.toInt()*60;
         Serial.print("Pas=");
         Serial.println(Pas);
