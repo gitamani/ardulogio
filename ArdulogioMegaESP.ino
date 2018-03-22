@@ -1,7 +1,7 @@
 /*
 
 This code has released under license CC BY- SA
-last release created 12/03/2018
+last release created 22/03/2018
 by Giuseppe Tamanini
 
 MEGA                           LCD
@@ -175,7 +175,7 @@ String inputString = "";         // a string to hold incoming data
 boolean stringComplete = false;  // whether the string is complete
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial1.begin(115200);
   Wire.begin();
   RTC.begin();
@@ -185,7 +185,7 @@ void setup() {
     while (1) delay(1);
   }
   LED.setOutput(outputPin); // Digital Pin 23
-  inputString.reserve(200);
+  inputString.reserve(20);
   // following line sets the RTC to the date & time this sketch was compiled
   //RTC.adjust(DateTime(2016,2,7,4,59,0));
 
@@ -899,26 +899,24 @@ void ScriviDati() {
 }
 
 void ScriviDatiRicevuti() {
-  
+
    if (stringComplete) {
+      Serial.print("Dati ricevuti: ");
       Serial.println(inputString);
-      Serial.println(inputString.substring(0,1));
+      Serial.print("1: ");
+      Serial.println(inputString. substring(0, 1));
       if (inputString.substring(0,1)=="A") {
-        inData1=inputString.substring(1,3);
+        inData1=inputString.substring(2,4);
         Pas=inData1.toInt()*60;
         Serial.print("Pas=");
         Serial.println(Pas);
         sPas=sPas+Pas;
         nPas=nPas+1;
-        /*inData2=inputString.substring(5,10);
-        Ppr=inData2.toInt();
-        sPpr=sPpr+Ppr;
-        nPpr=nPpr+1;*/
-        inData2=inputString.substring(4,7);
-        Te=inData2.toInt();
+        inData2=inputString.substring(4,9);
+        Te=inData2.toFloat();
         Serial.print("Te=");
         Serial.println(Te);
-        inData3=inputString.substring(8,12);
+        inData3=inputString.substring(10,14);
         Pe=inData3.toInt();
         Pe=Pe+aslm/29.27*Pe/(Te+273.15);
         Serial.print("Pe=");
@@ -983,9 +981,9 @@ void ScriviDatiRicevuti() {
           }
         }
       }
-      inputString = "";
-      stringComplete = false;
     }
+    inputString = "";
+    stringComplete = false;
     if (holdPae==0) holdPae=Pe;
    }
 }
